@@ -13,6 +13,7 @@ import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.utils.LemmaService;
+import searchengine.utils.RelevantPage;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,6 +26,8 @@ public class SearchService {
     private final SiteRepository siteRepository;
     private final LemmaRepository lemmaRepository;
     private final LemmaService lemmaService;
+    private final List<RelevantPage> relevantPages;
+    private final List<SearchData> searchDataList;
 
 
     public Massage search(String query, String siteUrl, int offset, int limit) {
@@ -46,9 +49,31 @@ public class SearchService {
                     return set1;
                 })
                 .orElse(Collections.emptySet());
-        float relevance = 0;
+
+        Map<PageModel, Float> absolutRelevances = new HashMap<>();
+
+        relevantPageList.forEach(pageModel -> {
+            lemmaModels
+                    .stream().map(lemmaModel ->
+                            lemmaModel.getIndexModelList()
+                                                .stream().map(indexModel ->
+                                                        indexRepository.findRankByLemmaIdAndPageId(lemmaModel, pageModel))
+                                .reduce((rank1, rank2) -> rank1 + rank2).orElseThrow())
+                    .reduce((lemmaRank1, lemmaRank2) -> lemmaRank1 + lemmaRank2)
+                    .ifPresent(lemmaRank -> absolutRelevances.put(pageModel, lemmaRank));
+        });
+
+        float maxRelevance = absolutRelevances.entrySet()
+                .stream().max(Map.Entry.comparingByValue()).orElseThrow().getValue();
+
+        absolutRelevances.forEach((pageModel, absolutRelevance) ->
+                relevantPages.add(new RelevantPage(
+                pageModel, absolutRelevance/maxRelevance, absolutRelevance)));
+
         String[] snippet = new String[0];
-        SearchData data = new SearchData(siteUrl, siteModel.getName(), siteModel.getUrl(), snippet, relevance);
-        return new Massage(true, data, relevantPageList.size());
+        relevantPages.forEach(relevantPage ->
+                searchDataList.add(new SearchData(siteModel.getUrl(), siteModel.getName(),
+                        relevantPage.getPageModel().getPath(), snippet, relevantPage.getRelativeRelevance())));
+        return new Massage(true, searchDataList, searchDataList.size());
     }
 }

@@ -3,11 +3,13 @@ package searchengine.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class Massage {
     private boolean result;
     private String error;
-    private SearchData data;
+    private List<SearchData> data;
     int count;
 
     public Massage(boolean result) {
@@ -18,7 +20,7 @@ public class Massage {
         this.result = result;
         this.error = error;
     }
-    public Massage(boolean result, SearchData data, int count) {
+    public Massage(boolean result, List<SearchData> data, int count) {
         this.result = result;
         this.data = data;
         this.count = count;
