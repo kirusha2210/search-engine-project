@@ -16,7 +16,6 @@ import searchengine.repositories.SiteRepository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -37,21 +36,25 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         List<DetailedStatisticsItem> detailed = new ArrayList<>();
         List<Site> sitesList = sites.getSites();
-        for(int i = 0; i < sitesList.size(); i++) {
-            Site site = sitesList.get(i);
-            SiteModel siteModel = siteRepository.findByName(site.getName()).orElseThrow();
+
+        for(Site site : sitesList) {
+            SiteModel siteModel = siteRepository.findByName(site.getName()).orElse(null);
             DetailedStatisticsItem item = new DetailedStatisticsItem();
             item.setName(site.getName());
             item.setUrl(site.getUrl());
-            int pages = (int) pageRepository.count();
-            int lemmas = (int) lemmaRepository.count();
+            int pages = 0;
+            int lemmas = 0;
+            if (siteModel != null) {
+                pages = siteModel.getPageModelList().size();
+                lemmas = siteModel.getLemmaModelList().size();
+                item.setStatus(String.valueOf(siteModel.getStatus()));
+                item.setError(siteModel.getLastError());
+                item.setStatusTime(siteModel.getStatus().ordinal());
+            }
             item.setPages(pages);
             item.setLemmas(lemmas);
-            item.setStatus(String.valueOf(siteModel.getStatus()));
-            item.setError(siteModel.getLastError());
-            item.setStatusTime(siteModel.getStatus().ordinal());
-            total.setPages(pages);
-            total.setLemmas(lemmas);
+            total.setPages(total.getPages() + pages);
+            total.setLemmas(total.getLemmas() + lemmas);
             detailed.add(item);
         }
 

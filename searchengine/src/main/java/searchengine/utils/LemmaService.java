@@ -44,6 +44,7 @@ public class LemmaService {
         this.englishLuceneMorph = new EnglishLuceneMorphology();
     }
 
+    @Transactional
     public void indexPage(PageModel pageModel) {
         String html = pageModel.getContent();
         String text = Jsoup.parse(html).text().toLowerCase();
@@ -52,7 +53,7 @@ public class LemmaService {
         saveLemmasAndIndices(pageModel);
     }
     public void createLemmas(String text, Map<String, Integer> lemmsMap) {
-        String russianCleanText = text.replaceAll("[^А-Яа-яЁё\\s]", "");
+        String russianCleanText = text.replaceAll("[^А-Яа-я\\s]", "");
         createLemmas(russianCleanText, russianLuceneMorph, skipFormsRussian, lemmsMap);
 
         String englishCleanText = text.replaceAll("[^A-Za-z\\s]", "");
@@ -84,9 +85,9 @@ public class LemmaService {
     }
 
     @Transactional
-    private void saveLemmasAndIndices(PageModel pageModel) {
-        List<LemmaModel> lemmaModels = new ArrayList<>();
-        List<IndexModel> indexModels = new ArrayList<>();
+    private synchronized void saveLemmasAndIndices(PageModel pageModel) {
+        Set<LemmaModel> lemmaModels = new HashSet<>();
+        Set<IndexModel> indexModels = new HashSet<>();
 
         lemmaToPage.forEach((lemma, countOnPage) -> {
             LemmaModel lemmaModel = lemmaRepository.findBySiteIdAndLemma(pageModel.getSiteId(), lemma)
@@ -96,7 +97,7 @@ public class LemmaService {
             lemmaModels.add(lemmaModel);
             indexModels.add(new IndexModel(pageModel, lemmaModel, countOnPage));
         });
-
+        System.out.println("List completed");
         try {
             lemmaRepository.saveAll(lemmaModels);
             indexRepository.saveAll(indexModels);

@@ -7,7 +7,7 @@ import lombok.Setter;
 
 import java.util.List;
 
-@Table(name = "lemma")
+@Table(name = "lemma", indexes = {@Index(name = "site_index", columnList = "site_id")})
 @Getter
 @Setter
 @Entity
@@ -34,7 +34,7 @@ public class LemmaModel {
     @Column(name = "frequency", nullable = false)
     private int frequency;
 
-    @OneToMany(mappedBy = "lemmaId", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "lemmaId")
     @Column(name = "indexes")
     private List<IndexModel> indexModelList;
 }

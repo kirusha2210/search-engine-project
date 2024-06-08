@@ -53,11 +53,11 @@ public class SiteModel {
     @NotNull
     private String name;
 
-    @OneToMany(mappedBy = "siteId")
+    @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL)
     @Column(name = "lemmas", nullable = false)
     private List<LemmaModel> lemmaModelList;
 
-    @OneToMany(mappedBy = "siteId")
+    @OneToMany(mappedBy = "siteId", cascade = CascadeType.ALL)
     @Column(name = "pages", nullable = false)
     private List<PageModel> pageModelList;
 }

@@ -1,4 +1,4 @@
-package searchengine.utils;
+package searchengine.dto;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

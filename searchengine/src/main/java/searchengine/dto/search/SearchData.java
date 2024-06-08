@@ -1,4 +1,4 @@
-package searchengine.dto;
+package searchengine.dto.search;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +10,7 @@ public class SearchData {
     String site;
     String siteName;
     String uri;
-    String[] snippet;
+    String title;
+    String snippet;
     float relevance;
 }

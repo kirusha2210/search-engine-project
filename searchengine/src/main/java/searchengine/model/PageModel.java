@@ -45,7 +45,7 @@ public class PageModel {
     private String content;
 //    MEDIUMTEXT NOT NULL — контент страницы (HTML-код).
 
-    @OneToMany(mappedBy = "pageId", cascade = CascadeType.ALL, orphanRemoval = true )
+    @OneToMany(mappedBy = "pageId", cascade = CascadeType.ALL)
     @Column(name = "indexes")
     private List<IndexModel> indexModelList;
 }

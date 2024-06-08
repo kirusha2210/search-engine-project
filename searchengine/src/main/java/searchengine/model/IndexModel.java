@@ -9,7 +9,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "index_table", uniqueConstraints = @UniqueConstraint(columnNames = {"lemma_id", "page_id"}))
+@Table(name = "index_table", uniqueConstraints = @UniqueConstraint(columnNames = {"lemma_id", "page_id"}),
+        indexes = {@Index(name = "page_index", columnList = "page_id")})
 @Entity
 public class IndexModel {
     public IndexModel(PageModel pageId, LemmaModel lemmaId, float rank) {
@@ -23,12 +24,12 @@ public class IndexModel {
     private int id;
 //    INT NOT NULL AUTO_INCREMENT;
 
-    @ManyToOne()
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "page_id", nullable = false)
     private PageModel pageId;
 //    INT NOT NULL — идентификатор страницы;
 
-    @ManyToOne(cascade = CascadeType.REMOVE)
+    @ManyToOne()
     @JoinColumn(name = "lemma_id", nullable = false)
     private LemmaModel lemmaId;
 //    INT NOT NULL — идентификатор леммы;

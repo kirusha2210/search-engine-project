@@ -6,15 +6,13 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.PageModel;
 import searchengine.model.SiteModel;
 import searchengine.repositories.PageRepository;
-import searchengine.utils.LemmaService;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -28,11 +26,12 @@ public class ParsHTML extends RecursiveAction {
     private final PageRepository pageRepository;
     private final List<ParsHTML> tasks = new ArrayList<>();
     private final List<String> linked = new ArrayList<>();
-    private static final int MAX_DEPTH = 5;
+    private static final int MAX_DEPTH = 3;
     private final int depth;
     private final String userAgent;
     private final String domainURL;
     private final SiteModel siteModel;
+    private static final int COUNT_PAGES = 3;
 
     @Autowired
     public ParsHTML(String url, String domainURL, PageRepository pageRepository,
@@ -67,12 +66,11 @@ public class ParsHTML extends RecursiveAction {
                 pageRepository.delete(pageModel);
             }
             pageModel = new PageModel(siteModel, url, HttpStatus.OK.value(), doc.toString());
-//            pageModelList.add(pageModel);
             lemmaService.indexPage(pageModel);
             pageRepository.save(pageModel);
             for (Element element : elements) {
                 String href = element.attr("abs:href");
-                if (!allLinks.contains(href) && href.startsWith(domainURL) && !href.contains("#") && href.endsWith("/")) {
+                if (!allLinks.contains(href) && !href.contains("#") && (href.endsWith("/") || href.endsWith(".html"))) {
                     linked.add(href);
                 }
             }
@@ -80,12 +78,12 @@ public class ParsHTML extends RecursiveAction {
     }
     @Override
     protected void compute() {
-        if (depth < MAX_DEPTH) {
+        if (depth < MAX_DEPTH + 1) {
             try {
                 Thread.sleep(300);
                 if (!linked.isEmpty()) {
                     for (String link : linked) {
-                        if (allLinks.size() < 100 && allLinks.add(link)) {
+                        if (allLinks.size() < COUNT_PAGES && allLinks.add(link)) {
                             System.out.println(link);
                             ParsHTML task = new ParsHTML(link, domainURL, pageRepository, depth + 1, userAgent, siteModel, lemmaService);
                             task.fork();

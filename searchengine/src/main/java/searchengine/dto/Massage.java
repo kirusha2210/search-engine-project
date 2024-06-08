@@ -1,11 +1,13 @@
 package searchengine.dto;
 
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
+import searchengine.dto.search.SearchData;
 
 import java.util.List;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public class Massage {
     private boolean result;
     private String error;

@@ -1,9 +1,11 @@
 package searchengine.services;
 
 import lombok.RequiredArgsConstructor;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.springframework.stereotype.Service;
 import searchengine.dto.Massage;
-import searchengine.dto.SearchData;
+import searchengine.dto.search.SearchData;
 import searchengine.model.IndexModel;
 import searchengine.model.LemmaModel;
 import searchengine.model.PageModel;
@@ -13,7 +15,7 @@ import searchengine.repositories.LemmaRepository;
 import searchengine.repositories.PageRepository;
 import searchengine.repositories.SiteRepository;
 import searchengine.utils.LemmaService;
-import searchengine.utils.RelevantPage;
+import searchengine.dto.RelevantPage;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,6 +30,12 @@ public class SearchService {
     private final LemmaService lemmaService;
     private final List<RelevantPage> relevantPages;
     private final List<SearchData> searchDataList;
+    private final List<SearchData> resultData;
+    private PageModel pageModel;
+    private String snippet = null;
+    private Document doc;
+    private String docText;
+    private int lemmaPosition;
 
 
     public Massage search(String query, String siteUrl, int offset, int limit) {
@@ -52,6 +60,7 @@ public class SearchService {
 
         Map<PageModel, Float> absolutRelevances = new HashMap<>();
 
+
         relevantPageList.forEach(pageModel -> {
             lemmaModels
                     .stream().map(lemmaModel ->
@@ -70,10 +79,28 @@ public class SearchService {
                 relevantPages.add(new RelevantPage(
                 pageModel, absolutRelevance/maxRelevance, absolutRelevance)));
 
-        String[] snippet = new String[0];
-        relevantPages.forEach(relevantPage ->
+
+
+        relevantPages.forEach(relevantPage -> {
+            pageModel = relevantPage.getPageModel();
+            doc = Jsoup.parse(pageModel.getContent());
+            lemmaModels.forEach(lemmaModel -> {
+                docText = doc.text();
+                lemmaPosition = docText.indexOf(lemmaModel.getLemma());
+                snippet = docText.substring(lemmaPosition - 100, lemmaPosition + 100);
+            });
                 searchDataList.add(new SearchData(siteModel.getUrl(), siteModel.getName(),
-                        relevantPage.getPageModel().getPath(), snippet, relevantPage.getRelativeRelevance())));
-        return new Massage(true, searchDataList, searchDataList.size());
+                        pageModel.getPath(), doc.title(), snippet, relevantPage.getRelativeRelevance()));
+
+        });
+
+//        limit = limit == 0 ? 20 : limit;
+//        offset = offset == 0 ? 20 : limit;
+        for (;offset < limit; offset++) {
+            resultData.add(searchDataList.get(offset));
+        }
+
+        return new Massage(true, resultData, searchDataList.size());
     }
+
 }

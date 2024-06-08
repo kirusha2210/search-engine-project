@@ -8,9 +8,8 @@ indexing-settings:
       name: Skillbox
     - url: https://www.playback.ru/
       name: PlayBack.Ru
-    - url: https://sendel.ru/
-      name: Sendel.ru
-
+#    - url: https://sendel.ru/
+#      name: Sendel.ru
 
 server:
   port: 8080
@@ -25,5 +24,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
+
+
