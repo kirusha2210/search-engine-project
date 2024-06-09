@@ -31,7 +31,7 @@ public class ParsHTML extends RecursiveAction {
     private final String userAgent;
     private final String domainURL;
     private final SiteModel siteModel;
-    private static final int COUNT_PAGES = 3;
+    private static final int COUNT_PAGES = 10;
 
     @Autowired
     public ParsHTML(String url, String domainURL, PageRepository pageRepository,
@@ -47,7 +47,7 @@ public class ParsHTML extends RecursiveAction {
         readHTML(url, userAgent);
     }
     public void readHTML(String url, String userAgent) {
-
+        if (!allLinks.isEmpty() && depth == 0) { allLinks.clear(); }
         Document doc = null;
         try {
             doc = Jsoup.connect(url).
@@ -59,7 +59,7 @@ public class ParsHTML extends RecursiveAction {
                     .get();
 
         } catch (IOException ignored) {}
-        if (doc != null) {
+        if (allLinks.size() <= COUNT_PAGES && doc != null) {
             Elements elements = doc.select("a[href]");
             PageModel pageModel = pageRepository.findByPath(url).orElse(null);
             if(pageModel != null) {
@@ -83,7 +83,7 @@ public class ParsHTML extends RecursiveAction {
                 Thread.sleep(300);
                 if (!linked.isEmpty()) {
                     for (String link : linked) {
-                        if (allLinks.size() < COUNT_PAGES && allLinks.add(link)) {
+                        if (allLinks.size() <= COUNT_PAGES && allLinks.add(link)) {
                             System.out.println(link);
                             ParsHTML task = new ParsHTML(link, domainURL, pageRepository, depth + 1, userAgent, siteModel, lemmaService);
                             task.fork();

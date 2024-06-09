@@ -7,7 +7,8 @@ import lombok.Setter;
 
 import java.util.List;
 
-@Table(name = "lemma", indexes = {@Index(name = "site_index", columnList = "site_id")})
+@Table(name = "lemma", indexes = {@Index(name = "site_index", columnList = "site_id")}, uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"site_id", "lemma"})})
 @Getter
 @Setter
 @Entity

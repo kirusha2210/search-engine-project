@@ -1,5 +1,6 @@
 package searchengine.controllers;
 
+import jakarta.websocket.Encoder;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.io.IOException;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
+@ResponseBody
 public class ApiController {
 
     private final IndexingService indexingService;
@@ -37,14 +39,14 @@ public class ApiController {
     }
 
     @SneakyThrows
-    @PostMapping("/pageIndexing")
-    public ResponseEntity<Massage> pageIndexing(@RequestBody String url) {
-        return ResponseEntity.ok(indexingService.pageIndexing(url));
+    @PostMapping("/indexPage")
+    public ResponseEntity<Massage> pageIndexing(@RequestBody() String page) {
+        return ResponseEntity.ok(indexingService.pageIndexing(page));
     }
 
     @PostMapping("/search")
-    public ResponseEntity<Massage> search(@RequestParam SearchDto searchDto) {
-        return ResponseEntity.ok(searchService.search(searchDto.getQuery(),
-                searchDto.getSiteUrl(), searchDto.getOffset(), searchDto.getLimit()));
+    public ResponseEntity<Massage> search(@RequestParam(name = "query") String query,
+                                          @RequestParam(name = "site") String site) {
+        return ResponseEntity.ok(searchService.search(query, site, 0, 20));
     }
 }

@@ -22,6 +22,7 @@ import searchengine.utils.ParsHTML;
 
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -74,7 +75,7 @@ public class IndexingService {
                     siteModel = new SiteModel(IndexingStatus.INDEXED, LocalDateTime.now(), "", site.getUrl(), site.getName());
                     siteRepository.save(siteModel);
                 }
-                executeParsingTask(siteModel, site);
+                executeParsingTask(siteModel, site.getUrl(), site.getUrl());
             }
             return new Massage(true);
         } catch (Exception ex) {
@@ -84,20 +85,6 @@ public class IndexingService {
             return new Massage(false, massage);
         }
     }
-    private void executeParsingTask(SiteModel siteModel, Site site) {
-        pools.add(forkJoinPool);
-        executorService.submit(() -> {
-            ParsHTML parsHTML = null;
-            try {
-                parsHTML = new ParsHTML(site.getUrl(), site.getUrl(), pageRepository, 0, userAgent, siteModel, lemmaService);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            forkJoinPool.invoke(parsHTML);
-            indexed = false;
-        });
-    }
-
     public Massage stopIndexing() {
         String massage = "Индексация прекращена успешно";
         try {
@@ -121,7 +108,9 @@ public class IndexingService {
             return new Massage(false, massage);
         }
     }
+
     public Massage pageIndexing(String url) throws IOException {
+        url = URLDecoder.decode(url);
         indexed = true;
         Matcher matcher;
         String error = "Данная страница находится за пределами сайтов, указанных в конфигурационном файле";
@@ -139,15 +128,31 @@ public class IndexingService {
             indexed = false;
             return new Massage(false, error);
     }
+    public Massage parsingHtml(PageModel pageModel) throws IOException {
+        executeParsingTask(pageModel.getSiteId(), pageModel.getSiteId().getUrl(), pageModel.getPath());
+        return new Massage(true, "Индексация успешна");
+    }
 
-    @Transactional
-    public void truncateAllTables() {
-        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
-        jdbcTemplate.execute("TRUNCATE TABLE lemma");
-        jdbcTemplate.execute("TRUNCATE TABLE page");
-        jdbcTemplate.execute("TRUNCATE TABLE site");
-        jdbcTemplate.execute("TRUNCATE TABLE index_table");
-        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+    public void parsingHtml(Site site, String url) throws IOException {
+        SiteModel siteModel = siteRepository.findByName(site.getName())
+                .orElse(new SiteModel(IndexingStatus.INDEXED, LocalDateTime.now(), "", site.getUrl(), site.getName()));
+        siteRepository.save(siteModel);
+        executeParsingTask(siteModel, site.getUrl(), url);
+        new Massage(true, "Индексация успешна");
+    }
+
+    private void executeParsingTask(SiteModel siteModel, String domainUrl, String url) {
+        pools.add(forkJoinPool);
+        executorService.submit(() -> {
+            ParsHTML parsHTML = null;
+            try {
+                parsHTML = new ParsHTML(url, domainUrl, pageRepository, 0, userAgent, siteModel, lemmaService);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            forkJoinPool.invoke(parsHTML);
+            indexed = false;
+        });
     }
 
     private boolean processMatchingSites(String url) throws IOException {
@@ -164,23 +169,14 @@ public class IndexingService {
         return false;
     }
 
-    public Massage parsingHtml(PageModel pageModel) throws IOException {
-        pools.add(forkJoinPool);
-        ParsHTML parsHTML = new ParsHTML(pageModel.getPath(), pageModel.getSiteId().getUrl(),
-                pageRepository, 0, userAgent, pageModel.getSiteId(), lemmaService);
-        forkJoinPool.invoke(parsHTML);
-        return new Massage(true, "Индексация успешна");
-    }
 
-    public void parsingHtml(Site site, String url) throws IOException {
-        pools.add(forkJoinPool);
-        SiteModel siteModel = siteRepository.findByName(site.getName())
-                .orElse(new SiteModel(IndexingStatus.INDEXED, LocalDateTime.now(), "", site.getUrl(), site.getName()));
-        siteRepository.save(siteModel);
-        ParsHTML parsHTML = new ParsHTML(url, site.getUrl(),
-                pageRepository, 0, userAgent, siteModel, lemmaService);
-        forkJoinPool.invoke(parsHTML);
-        new Massage(true, "Индексация успешна");
+    @Transactional
+    public void truncateAllTables() {
+        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+        jdbcTemplate.execute("TRUNCATE TABLE lemma");
+        jdbcTemplate.execute("TRUNCATE TABLE page");
+        jdbcTemplate.execute("TRUNCATE TABLE site");
+        jdbcTemplate.execute("TRUNCATE TABLE index_table");
+        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
     }
-
 }

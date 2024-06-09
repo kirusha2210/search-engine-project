@@ -20,6 +20,7 @@ import searchengine.repositories.PageRepository;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Component
@@ -32,7 +33,7 @@ public class LemmaService {
     private final LuceneMorphology englishLuceneMorph;
     private final List<String> skipFormsRussian = Arrays.asList("ПРЕДЛ", "МЕЖД", "СОЮЗ", "ЧАСТ");
     private final List<String> skipFormsEnglish = Arrays.asList("CONJ", "PREP", "INT", "PART");
-    private final Map<String, Integer> lemmaToPage = new HashMap<>();
+    private final Map<String, Integer> lemmaToPage = new ConcurrentHashMap<>();
     @Autowired
     public LemmaService(IndexRepository indexRepository, PageRepository pageRepository,
                         LemmaRepository lemmaRepository) throws IOException
@@ -48,7 +49,7 @@ public class LemmaService {
     public void indexPage(PageModel pageModel) {
         String html = pageModel.getContent();
         String text = Jsoup.parse(html).text().toLowerCase();
-
+        if(lemmaToPage.size() >= 1000) { lemmaToPage.clear(); }
         createLemmas(text, lemmaToPage);
         saveLemmasAndIndices(pageModel);
     }
@@ -90,17 +91,16 @@ public class LemmaService {
         Set<IndexModel> indexModels = new HashSet<>();
 
         lemmaToPage.forEach((lemma, countOnPage) -> {
-            LemmaModel lemmaModel = lemmaRepository.findBySiteIdAndLemma(pageModel.getSiteId(), lemma)
-                    .orElseGet(() -> new LemmaModel(pageModel.getSiteId(), lemma, 0));
-
-            lemmaModel.setFrequency(lemmaModel.getFrequency() + 1);
-            lemmaModels.add(lemmaModel);
-            indexModels.add(new IndexModel(pageModel, lemmaModel, countOnPage));
+            lemmaRepository.upsertLemma(pageModel.getSiteId().getId(), lemma);
+            indexModels.add(new IndexModel(pageModel,
+                    lemmaRepository.findBySiteIdAndLemma(pageModel.getSiteId(), lemma).orElseThrow().get(0),
+                    countOnPage));
         });
         System.out.println("List completed");
         try {
-            lemmaRepository.saveAll(lemmaModels);
             indexRepository.saveAll(indexModels);
+            if (indexModels.size() >= 1000) { indexModels.clear(); }
+            if(lemmaToPage.size() >= 1000) { lemmaToPage.clear(); }
         } catch (Exception e) {
             log.error("Error while processing page: " + pageModel.getId(), e);
         }

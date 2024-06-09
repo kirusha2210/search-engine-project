@@ -44,7 +44,7 @@ public class SearchService {
         Map<String, Integer> searchLemmsMap = lemmaService.searchLemmas(cleanQuery);
 
         List<LemmaModel> lemmaModels = searchLemmsMap.keySet().stream()
-                .map(integer -> lemmaRepository.findBySiteIdAndLemma(siteModel, integer).orElseThrow())
+                .map(integer -> lemmaRepository.findBySiteIdAndLemma(siteModel, integer).orElseThrow().get(0))
                 .sorted(Comparator.comparingInt(LemmaModel::getFrequency))
                 .toList();
 
