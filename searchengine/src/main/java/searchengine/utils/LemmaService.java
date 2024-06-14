@@ -34,6 +34,8 @@ public class LemmaService {
     private final List<String> skipFormsRussian = Arrays.asList("ПРЕДЛ", "МЕЖД", "СОЮЗ", "ЧАСТ");
     private final List<String> skipFormsEnglish = Arrays.asList("CONJ", "PREP", "INT", "PART");
     private final Map<String, Integer> lemmaToPage = new ConcurrentHashMap<>();
+    private Set<IndexModel> indexModels;
+    private int countWords = 0;
     @Autowired
     public LemmaService(IndexRepository indexRepository, PageRepository pageRepository,
                         LemmaRepository lemmaRepository) throws IOException
@@ -49,16 +51,19 @@ public class LemmaService {
     public void indexPage(PageModel pageModel) {
         String html = pageModel.getContent();
         String text = Jsoup.parse(html).text().toLowerCase();
-        if(lemmaToPage.size() >= 1000) { lemmaToPage.clear(); }
         createLemmas(text, lemmaToPage);
         saveLemmasAndIndices(pageModel);
+        if (indexModels.size() >= 2000 && lemmaToPage.size() >= 1000) { indexModels.clear(); lemmaToPage.clear(); }
     }
+
     public void createLemmas(String text, Map<String, Integer> lemmsMap) {
         String russianCleanText = text.replaceAll("[^А-Яа-я\\s]", "");
         createLemmas(russianCleanText, russianLuceneMorph, skipFormsRussian, lemmsMap);
 
         String englishCleanText = text.replaceAll("[^A-Za-z\\s]", "");
         createLemmas(englishCleanText, englishLuceneMorph, skipFormsEnglish, lemmsMap);
+
+        countWords = text.replaceAll("[^A-Za-zА-Яа-я\\s]", "").split(" \\s+").length;
     }
     private void createLemmas(String cleanText, LuceneMorphology luceneMorphology,
                               List<String> skipForms, Map<String, Integer> lemmsMap)
@@ -78,29 +83,23 @@ public class LemmaService {
                     }
                 });
     }
-    public Map<String, Integer> searchLemmas (String cleanText) {
-        return lemmaToPage.entrySet().stream()
-                .filter(entry -> cleanText.contains(entry.getKey()))
-                .filter(entry -> entry.getValue() < 10)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    public Map<String, Integer> searchLemmas (String text, Map<String, Integer> lemms) {
+        createLemmas(text, lemms);
+        return lemms;
     }
 
     @Transactional
     private synchronized void saveLemmasAndIndices(PageModel pageModel) {
-        Set<LemmaModel> lemmaModels = new HashSet<>();
-        Set<IndexModel> indexModels = new HashSet<>();
-
+        indexModels = new HashSet<>();
         lemmaToPage.forEach((lemma, countOnPage) -> {
             lemmaRepository.upsertLemma(pageModel.getSiteId().getId(), lemma);
             indexModels.add(new IndexModel(pageModel,
                     lemmaRepository.findBySiteIdAndLemma(pageModel.getSiteId(), lemma).orElseThrow().get(0),
-                    countOnPage));
+                    (float) countOnPage/countWords));
         });
         System.out.println("List completed");
         try {
             indexRepository.saveAll(indexModels);
-            if (indexModels.size() >= 1000) { indexModels.clear(); }
-            if(lemmaToPage.size() >= 1000) { lemmaToPage.clear(); }
         } catch (Exception e) {
             log.error("Error while processing page: " + pageModel.getId(), e);
         }

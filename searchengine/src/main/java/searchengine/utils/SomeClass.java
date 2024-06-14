@@ -32,56 +32,7 @@ public class SomeClass {
     public static void main(String[] args) throws IOException {
         String regex = "^(https?://[^/]+)";
         String text1 = "Well, my aim is to be happy.";
-        LuceneMorphology russianLuceneMorph = new RussianLuceneMorphology();
-        LuceneMorphology englishLuceneMorph = new EnglishLuceneMorphology();
-        String cleanText = text1.replaceAll("[^A-Za-z\\s]", "").toLowerCase();
-        Arrays.stream(cleanText.split("\\s+")).
-                forEach(word -> {
-                    System.out.println(englishLuceneMorph.getMorphInfo(word));
-                });
-        //TODO:  союзы (conjunctions),
-        // предлоги (prepositions),
-        // частицы (particles),
-        // междометия (interjections),
-        // модальные слова (modal words) и
-        // восклицания (exclamations)
-        // за исключением междометий, союзов, предлогов и частиц
-//        List<String> morphInfosRussian = russianLuceneMorph.getMorphInfo(word);
-//        System.out.println(morphInfosEnglish);
+        int countWords = text1.replaceAll("[^A-Za-zА-Яа-я\\s]", "").split("\\s+").length;
+        System.out.println(countWords);
     }
-
-//    public void lemma() {
-//        Map<String, Integer> lemmaToPage = new HashMap<>();
-//        String cleanText = text.replaceAll("[^А-Яа-яЁё\\s]", "").toLowerCase();
-//        Arrays.stream(cleanText.split("\\s+"))
-//                .filter(word -> !word.isEmpty())
-//                .forEach(word -> {
-//                    String[] morphForm;
-//                    String normalForm;
-////                    englishLuceneMorph.getNormalForms(word).
-//                    List<String> morphInfosRussian = russianLuceneMorph.getMorphInfo(word);
-//                    List<String> morphInfosEnglish = englishLuceneMorph.getMorphInfo(word);
-//                    if (!morphInfosRussian.isEmpty()) {
-//                        morphForm = morphInfosRussian.get(0).split(" ");
-//                        if (morphForm.length > 1) {
-//                            normalForm = russianLuceneMorph.getNormalForms(word).get(0);
-//                            lemmaToPage.merge(normalForm, 1, Integer::sum);
-//                        }
-//                    } else if (!morphInfosEnglish.isEmpty()) {
-//                        morphForm = morphInfosEnglish.get(0).split(" ");
-//                        if (morphForm.length > 1) {
-//                            normalForm = englishLuceneMorph.getNormalForms(word).get(0);
-//                            lemmaToPage.merge(normalForm, 1, Integer::sum);
-//                        }
-//                    }
-//                });
-//    }
-//
-//    public String someMethod() {
-//        String word = "Слово";
-//        List<String> morphInfosRussian = russianLuceneMorph.getMorphInfo(word);
-//        List<String> morphInfosEnglish = englishLuceneMorph.getMorphInfo(word);
-//        System.out.println();
-//        return morphInfosRussian.toString() + morphInfosEnglish;
-//    }
 }

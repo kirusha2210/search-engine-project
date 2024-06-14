@@ -44,9 +44,10 @@ public class ApiController {
         return ResponseEntity.ok(indexingService.pageIndexing(page));
     }
 
-    @PostMapping("/search")
-    public ResponseEntity<Massage> search(@RequestParam(name = "query") String query,
-                                          @RequestParam(name = "site") String site) {
-        return ResponseEntity.ok(searchService.search(query, site, 0, 20));
+    @SneakyThrows
+    @GetMapping("/search")
+    public ResponseEntity<Massage> search(SearchDto searchDto) {
+        return ResponseEntity.ok(searchService.search(searchDto.getQuery(),
+                searchDto.getSite(), searchDto.getOffset(), searchDto.getLimit()));
     }
 }

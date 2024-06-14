@@ -13,6 +13,7 @@ import searchengine.repositories.PageRepository;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -25,18 +26,17 @@ public class ParsHTML extends RecursiveAction {
     private final LemmaService lemmaService;
     private final PageRepository pageRepository;
     private final List<ParsHTML> tasks = new ArrayList<>();
-    private final List<String> linked = new ArrayList<>();
-    private static final int MAX_DEPTH = 3;
+    private final Set<String> linked = new HashSet<>();
+    private static final int MAX_DEPTH = 5;
     private final int depth;
     private final String userAgent;
     private final String domainURL;
     private final SiteModel siteModel;
-    private static final int COUNT_PAGES = 10;
-
+    private int siteCountPages;
     @Autowired
     public ParsHTML(String url, String domainURL, PageRepository pageRepository,
                     int depth, String userAgent, SiteModel siteModel,
-                    LemmaService lemmaService) throws IOException
+                    LemmaService lemmaService, int siteCountPages) throws IOException
     {
         this.lemmaService = lemmaService;
         this.domainURL = domainURL;
@@ -44,10 +44,13 @@ public class ParsHTML extends RecursiveAction {
         this.depth = depth;
         this.userAgent = userAgent;
         this.siteModel = siteModel;
+        this.siteCountPages = siteCountPages;
         readHTML(url, userAgent);
     }
     public void readHTML(String url, String userAgent) {
-        if (!allLinks.isEmpty() && depth == 0) { allLinks.clear(); }
+        if (!allLinks.isEmpty() && depth == 0) {
+            allLinks.clear();
+        }
         Document doc = null;
         try {
             doc = Jsoup.connect(url).
@@ -59,18 +62,17 @@ public class ParsHTML extends RecursiveAction {
                     .get();
 
         } catch (IOException ignored) {}
-        if (allLinks.size() <= COUNT_PAGES && doc != null) {
+        if (doc != null) {
+            allLinks.add(url);
+            linked.add(url);
             Elements elements = doc.select("a[href]");
-            PageModel pageModel = pageRepository.findByPath(url).orElse(null);
-            if(pageModel != null) {
-                pageRepository.delete(pageModel);
-            }
-            pageModel = new PageModel(siteModel, url, HttpStatus.OK.value(), doc.toString());
-            lemmaService.indexPage(pageModel);
+            PageModel pageModel = new PageModel(siteModel, url, HttpStatus.OK.value(), doc.toString());
             pageRepository.save(pageModel);
+            lemmaService.indexPage(pageModel);
             for (Element element : elements) {
                 String href = element.attr("abs:href");
-                if (!allLinks.contains(href) && !href.contains("#") && (href.endsWith("/") || href.endsWith(".html"))) {
+                if (!allLinks.contains(href) && !href.contains("#") && (href.endsWith("/") || href.endsWith(".html"))
+                        && linked.size() < siteCountPages) {
                     linked.add(href);
                 }
             }
@@ -83,12 +85,16 @@ public class ParsHTML extends RecursiveAction {
                 Thread.sleep(300);
                 if (!linked.isEmpty()) {
                     for (String link : linked) {
-                        if (allLinks.size() <= COUNT_PAGES && allLinks.add(link)) {
-                            System.out.println(link);
-                            ParsHTML task = new ParsHTML(link, domainURL, pageRepository, depth + 1, userAgent, siteModel, lemmaService);
-                            task.fork();
-                            tasks.add(task);
-                        }
+//                        while (allLinks.size() <= COUNT_PAGES) {
+                            if (allLinks.add(link)) {
+                                System.out.println(link);
+                                siteCountPages = siteCountPages - linked.size();
+                                ParsHTML task = new ParsHTML(link, domainURL, pageRepository, depth + 1 ,
+                                        userAgent, siteModel, lemmaService, siteCountPages);
+                                task.fork();
+                                tasks.add(task);
+                            }
+//                        }
                     }
                 }
                 invokeAll(tasks);

@@ -4,11 +4,12 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.web.bind.annotation.RequestBody;
+import searchengine.config.Site;
 
 @Data
 public class SearchDto {
     private String query;
-    private String siteUrl;
-    private int offset = 0;
-    private int limit = 20;
+    private String site;
+    private String offset;
+    private String limit;
 }

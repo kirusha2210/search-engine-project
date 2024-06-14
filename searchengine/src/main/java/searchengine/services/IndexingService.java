@@ -1,6 +1,7 @@
 package searchengine.services;
 
 
+import lombok.extern.log4j.Log4j;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,10 +34,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-@Slf4j
+@Log4j
 public class IndexingService {
     private final ForkJoinPool forkJoinPool = new ForkJoinPool();
     private final LemmaService lemmaService;
+    private final int countPagesOnSite = 5;
     private static final String userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 YaBrowser/24.4.0.0 Safari/537.36";
     public static Set<String> allLinks = new CopyOnWriteArraySet<>();
     private final SiteRepository siteRepository;
@@ -44,7 +46,6 @@ public class IndexingService {
     private final SitesList sitesList;
     private final ArrayList<ForkJoinPool> pools;
     private final ExecutorService executorService;
-    private SiteModel siteModel;
     private boolean indexed;
     private final JdbcTemplate jdbcTemplate;
 
@@ -67,7 +68,7 @@ public class IndexingService {
         try {
             truncateAllTables();
             for (Site site : sitesList.getSites()) {
-                siteModel = siteRepository.findByUrl(site.getUrl()).orElse(null);
+                SiteModel siteModel = siteRepository.findByUrl(site.getUrl()).orElse(null);
                 if (siteModel != null) {
                     siteModel.setStatusTime(LocalDateTime.now());
                     siteRepository.save(siteModel);
@@ -75,13 +76,19 @@ public class IndexingService {
                     siteModel = new SiteModel(IndexingStatus.INDEXED, LocalDateTime.now(), "", site.getUrl(), site.getName());
                     siteRepository.save(siteModel);
                 }
-                executeParsingTask(siteModel, site.getUrl(), site.getUrl());
+                try {
+                    executeParsingTask(siteModel, site.getUrl(), site.getUrl());
+                } catch (Exception e) {
+                    log.error("Ошибка при парсинге сайтов", e);
+                }
+
             }
             return new Massage(true);
         } catch (Exception ex) {
             ex.printStackTrace();
             indexed = false;
             String massage = "Индексация нарушена ошибками на внутреннем сервере";
+            log.error(massage, ex);
             return new Massage(false, massage);
         }
     }
@@ -105,6 +112,7 @@ public class IndexingService {
         } catch (Exception ex) {
             indexed = true;
             massage = "Прерывание ндексации нарушено ошибками на внутреннем сервере";
+            log.error(massage, ex);
             return new Massage(false, massage);
         }
     }
@@ -146,7 +154,8 @@ public class IndexingService {
         executorService.submit(() -> {
             ParsHTML parsHTML = null;
             try {
-                parsHTML = new ParsHTML(url, domainUrl, pageRepository, 0, userAgent, siteModel, lemmaService);
+                parsHTML = new ParsHTML(url, domainUrl, pageRepository, 0,
+                        userAgent, siteModel, lemmaService, countPagesOnSite);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -168,8 +177,6 @@ public class IndexingService {
         }
         return false;
     }
-
-
     @Transactional
     public void truncateAllTables() {
         jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");

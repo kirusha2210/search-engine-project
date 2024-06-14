@@ -24,7 +24,7 @@ public class IndexModel {
     private int id;
 //    INT NOT NULL AUTO_INCREMENT;
 
-    @ManyToOne(cascade = CascadeType.ALL)
+    @ManyToOne()
     @JoinColumn(name = "page_id", nullable = false)
     private PageModel pageId;
 //    INT NOT NULL — идентификатор страницы;
